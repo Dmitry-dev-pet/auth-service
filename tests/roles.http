@@ -1,0 +1,51 @@
+@host = http://localhost:8000
+@api_prefix = /api
+
+# 1. Создаем нового пользователя
+# Укажите уникальный telegram_id
+@telegram_id = 123456789
+POST {{host}}{{api_prefix}}/users/
+Content-Type: application/json
+
+{
+  "telegram_id": {{telegram_id}},
+  "username": "testuser",
+  "name": "Test User"
+}
+
+###
+
+# 2. Создаем роль "admin"
+POST {{host}}{{api_prefix}}/roles/
+Content-Type: application/json
+
+{
+  "name": "admin"
+}
+
+###
+
+# 3. Создаем роль "student"
+POST {{host}}{{api_prefix}}/roles/
+Content-Type: application/json
+
+{
+  "name": "student"
+}
+
+###
+
+# 4. Получаем список всех ролей
+GET {{host}}{{api_prefix}}/roles/
+
+###
+
+# 5. Назначаем роль "admin" пользователю
+@role_to_assign = admin
+POST {{host}}{{api_prefix}}/users/{{telegram_id}}/roles?role_name={{role_to_assign}}
+Content-Type: application/json
+
+###
+
+# 6. Проверяем пользователя (у него должна быть роль admin)
+GET {{host}}{{api_prefix}}/users/{{telegram_id}}

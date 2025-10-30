@@ -1,5 +1,21 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import List
+
+
+class RoleBase(BaseModel):
+    name: str
+
+
+class RoleCreate(RoleBase):
+    pass
+
+
+class RoleSchema(RoleBase):
+    id: int
+
+    class Config:
+        from_attributes = True
 
 
 class UserBase(BaseModel):
@@ -18,6 +34,7 @@ class UserSchema(UserBase):
     is_bot: bool
     created_at: datetime
     updated_at: datetime
+    roles: List[RoleSchema] = []
 
     class Config:
         from_attributes = True

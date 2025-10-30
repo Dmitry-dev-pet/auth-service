@@ -46,6 +46,7 @@ app = FastAPI(lifespan=lifespan)
 
 from fastapi import HTTPException, APIRouter
 from . import crud, schemas, security
+from typing import List
 
 router = APIRouter()
 
@@ -62,7 +63,7 @@ async def dummy_auth(request: schemas.DummyTokenRequest):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.post("/users/", response_model=schemas.UserSchema)
+@router.post("/users/", response_model=schemas.UserSchema)
 async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
     """
     Создает нового пользователя.
@@ -73,8 +74,55 @@ async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(get_d
     return await crud.create_user(db=db, user=user)
 
 
+@router.post("/roles/", response_model=schemas.RoleSchema)
+async def create_role(role: schemas.RoleCreate, db: AsyncSession = Depends(get_db)):
+    """
+    Создает новую роль.
+    """
+    db_role = await crud.get_role_by_name(db, name=role.name)
+    if db_role:
+        raise HTTPException(status_code=400, detail="Role with this name already registered")
+    return await crud.create_role(db=db, role=role)
+
+
+@router.get("/roles/", response_model=List[schemas.RoleSchema])
+async def read_roles(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    """
+    Возвращает список ролей.
+    """
+    roles = await crud.get_roles(db, skip=skip, limit=limit)
+    return roles
+
+
+@router.get("/users/{telegram_id}", response_model=schemas.UserSchema)
+async def read_user(telegram_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Возвращает пользователя по его Telegram ID.
+    """
+    db_user = await crud.get_user_by_telegram_id(db, telegram_id=telegram_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
+
+
+@router.post("/users/{telegram_id}/roles", response_model=schemas.UserSchema)
+async def add_role_to_user(telegram_id: int, role_name: str, db: AsyncSession = Depends(get_db)):
+    """
+    Назначает роль пользователю.
+    """
+    db_user = await crud.get_user_by_telegram_id(db, telegram_id=telegram_id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db_role = await crud.get_role_by_name(db, name=role_name)
+    if not db_role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    user = await crud.add_role_to_user(db=db, user=db_user, role=db_role)
+    return user
+
+
 @app.get("/healthcheck")
 def healthcheck():
     return {"status": "ok"}
 
-app.include_router(router)
+app.include_router(router, prefix="/api")
