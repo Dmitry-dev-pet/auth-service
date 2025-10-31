@@ -29,15 +29,37 @@ async def get_user_by_telegram_id(db: AsyncSession, telegram_id: int):
     return result.scalars().first()
 
 
+async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[models.User]:
+    """
+    Получение списка пользователей.
+    """
+    result = await db.execute(select(models.User).offset(skip).limit(limit))
+    return result.scalars().all()
+
+
 async def create_user(db: AsyncSession, user: schemas.UserCreate) -> models.User:
     """
     Создание нового пользователя.
     """
-    db_user = models.User(**user.model_dump())
+    user_data = user.model_dump()
+    name_parts = [user_data.get("first_name"), user_data.get("last_name")]
+    db_user = models.User(
+        telegram_id=user_data["telegram_id"],
+        username=user_data.get("username"),
+        name=" ".join(filter(None, name_parts)) or None,
+    )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     return db_user
+
+
+async def get_role(db: AsyncSession, role_id: int):
+    """
+    Получение роли по ее ID.
+    """
+    result = await db.execute(select(models.Role).filter(models.Role.id == role_id))
+    return result.scalars().first()
 
 
 async def get_role_by_name(db: AsyncSession, name: str):
